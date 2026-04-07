@@ -22,49 +22,71 @@ export function AuthProvider({ children }) {
     useEffect(() => {
         let mounted = true;
 
+        // Fallback: If Supabase hangs for any reason (e.g., token refresh deadlock),
+        // we forcefully drop the loading screen after 3 seconds.
+        const fallbackTimer = setTimeout(() => {
+            if (mounted) {
+                console.warn('Auth fallback timer triggered! Supabase is hanging.');
+                setLoading(false);
+            }
+        }, 3000);
+
         const initSession = async () => {
             try {
                 const { data, error } = await supabase.auth.getSession();
-                if (error) throw error;
+                if (error) {
+                    console.error('getSession error:', error);
+                }
 
                 const session = data?.session;
                 if (mounted) {
                     setUser(session?.user ?? null);
                     if (session?.user) {
-                        await fetchProfile(session.user.id);
+                        try {
+                            await fetchProfile(session.user.id);
+                        } catch (profileErr) {
+                            console.error('fetchProfile error in initSession:', profileErr);
+                        }
                     }
                 }
             } catch (err) {
-                console.error('Session initialization error:', err);
+                console.error('Unhandled Session init error:', err);
             } finally {
                 if (mounted) {
                     setLoading(false);
+                    clearTimeout(fallbackTimer);
                 }
             }
         };
 
-        initSession();
-
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (_event, session) => {
-                if (!mounted) return;
+            async (event, session) => {
+                console.log('onAuthStateChange event:', event);
+
                 try {
-                    setUser(session?.user ?? null);
+                    if (mounted) setUser(session?.user ?? null);
+
                     if (session?.user) {
                         await fetchProfile(session.user.id);
                     } else {
-                        setProfile(null);
+                        if (mounted) setProfile(null);
                     }
                 } catch (err) {
-                    console.error('Auth state change error:', err);
+                    console.error('onAuthStateChange exception:', err);
                 } finally {
-                    setLoading(false);
+                    if (mounted) {
+                        setLoading(false);
+                        clearTimeout(fallbackTimer);
+                    }
                 }
             }
         );
 
+        initSession();
+
         return () => {
             mounted = false;
+            clearTimeout(fallbackTimer);
             subscription?.unsubscribe();
         };
     }, []);
