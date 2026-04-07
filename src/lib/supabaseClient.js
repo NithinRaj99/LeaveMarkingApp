@@ -7,6 +7,21 @@ if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error('Missing Supabase environment variables. Check your .env file.');
 }
 
+// FIX FOR SUPABASE INTERNAL QUEUE HANG (POSTGREST + AUTH DEADLOCK):
+// When reloading, orphaned GoTrue storage locks can cause the internal token-refresh 
+// promise to hang infinitely, meaning ALL `supabase.from()` wait in queue forever!
+try {
+    for (let i = 0; i < window.localStorage.length; i++) {
+        const key = window.localStorage.key(i);
+        if (key && (key.includes('-lock') || key.startsWith('supabase.auth.lock'))) {
+            console.warn('[Supabase] Found orphaned lock, purging:', key);
+            window.localStorage.removeItem(key);
+        }
+    }
+} catch (e) {
+    console.warn('Could not clear locks:', e);
+}
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
         storage: window.localStorage,
