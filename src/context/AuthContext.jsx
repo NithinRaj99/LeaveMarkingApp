@@ -20,27 +20,53 @@ export function AuthProvider({ children }) {
     };
 
     useEffect(() => {
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setUser(session?.user ?? null);
-            if (session?.user) {
-                fetchProfile(session.user.id);
+        let mounted = true;
+
+        const initSession = async () => {
+            try {
+                const { data, error } = await supabase.auth.getSession();
+                if (error) throw error;
+
+                const session = data?.session;
+                if (mounted) {
+                    setUser(session?.user ?? null);
+                    if (session?.user) {
+                        await fetchProfile(session.user.id);
+                    }
+                }
+            } catch (err) {
+                console.error('Session initialization error:', err);
+            } finally {
+                if (mounted) {
+                    setLoading(false);
+                }
             }
-            setLoading(false);
-        });
+        };
+
+        initSession();
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (_event, session) => {
-                setUser(session?.user ?? null);
-                if (session?.user) {
-                    await fetchProfile(session.user.id);
-                } else {
-                    setProfile(null);
+                if (!mounted) return;
+                try {
+                    setUser(session?.user ?? null);
+                    if (session?.user) {
+                        await fetchProfile(session.user.id);
+                    } else {
+                        setProfile(null);
+                    }
+                } catch (err) {
+                    console.error('Auth state change error:', err);
+                } finally {
+                    setLoading(false);
                 }
-                setLoading(false);
             }
         );
 
-        return () => subscription.unsubscribe();
+        return () => {
+            mounted = false;
+            subscription?.unsubscribe();
+        };
     }, []);
 
     const signUp = async (email, password, fullName) => {
