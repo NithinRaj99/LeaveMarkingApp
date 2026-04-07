@@ -40,10 +40,10 @@ export function AuthProvider({ children }) {
 
                 const session = data?.session;
                 if (mounted) {
-                    setUser(session?.user ?? null);
-                    if (session?.user) {
+                    setUser(sessionUser ?? null);
+                    if (sessionUser) {
                         try {
-                            await fetchProfile(session.user.id);
+                            await fetchProfile(sessionUser.id);
                         } catch (profileErr) {
                             console.error('fetchProfile error in initSession:', profileErr);
                         }
