@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useLeaves } from '../hooks/useLeaves';
 import { useAllocations } from '../hooks/useAllocations';
-import { LEAVE_COLORS, LEAVE_TYPES } from '../lib/constants';
+import { LEAVE_COLORS, LEAVE_TYPES, calculateLeaveDays } from '../lib/constants';
 import { Doughnut, Bar } from 'react-chartjs-2';
 import {
     Chart as ChartJS,
@@ -24,7 +24,7 @@ export default function Dashboard() {
     const stats = useMemo(() => {
         const taken = {};
         leaves.forEach((l) => {
-            const count = l.duration === 'half_day' ? 0.5 : 1;
+            const count = calculateLeaveDays(l.start_date, l.end_date, l.duration);
             taken[l.leave_type] = (taken[l.leave_type] || 0) + count;
         });
 
@@ -54,7 +54,7 @@ export default function Dashboard() {
 
         leaves.forEach((l) => {
             const monthIdx = new Date(l.start_date).getMonth();
-            months[monthIdx].count += l.duration === 'half_day' ? 0.5 : 1;
+            months[monthIdx].count += calculateLeaveDays(l.start_date, l.end_date, l.duration);
         });
 
         return months;

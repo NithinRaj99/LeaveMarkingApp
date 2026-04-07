@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import { calculateLeaveDays } from '../lib/constants';
 
 export function useAdmin() {
     const { isAdmin } = useAuth();
@@ -43,7 +44,7 @@ export function useAdmin() {
 
         const taken = {};
         userLeaves.forEach((l) => {
-            const count = l.duration === 'half_day' ? 0.5 : 1;
+            const count = calculateLeaveDays(l.start_date, l.end_date, l.duration);
             taken[l.leave_type] = (taken[l.leave_type] || 0) + count;
         });
 

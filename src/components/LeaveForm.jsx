@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, AlertTriangle, Loader2, Save } from 'lucide-react';
-import { LEAVE_TYPES, DURATION_OPTIONS } from '../lib/constants';
+import { LEAVE_TYPES, DURATION_OPTIONS, calculateLeaveDays } from '../lib/constants';
 import toast from 'react-hot-toast';
 
 export default function LeaveForm({ onSubmit, onClose, initialData, allocations, leaves }) {
@@ -36,10 +36,10 @@ export default function LeaveForm({ onSubmit, onClose, initialData, allocations,
             (l) => l.leave_type === formData.leave_type && (!initialData || l.id !== initialData.id)
         );
         const totalTaken = takenLeaves.reduce(
-            (sum, l) => sum + (l.duration === 'half_day' ? 0.5 : 1),
+            (sum, l) => sum + calculateLeaveDays(l.start_date, l.end_date, l.duration),
             0
         );
-        const newCount = formData.duration === 'half_day' ? 0.5 : 1;
+        const newCount = calculateLeaveDays(formData.start_date, formData.end_date, formData.duration);
 
         if (totalTaken + newCount > allocation.total_allowed) {
             setWarning(
@@ -56,6 +56,13 @@ export default function LeaveForm({ onSubmit, onClose, initialData, allocations,
             if (field === 'start_date' && !prev.end_date) {
                 updated.end_date = value;
             }
+
+            // If date range is more than 1 day, force full_day
+            const isMultiDay = updated.start_date && updated.end_date && updated.start_date !== updated.end_date;
+            if (isMultiDay && updated.duration === 'half_day') {
+                updated.duration = 'full_day';
+            }
+
             return updated;
         });
     };
@@ -140,19 +147,27 @@ export default function LeaveForm({ onSubmit, onClose, initialData, allocations,
                     <div>
                         <label className="block text-sm font-medium text-text-muted mb-1.5">Duration</label>
                         <div className="flex gap-3">
-                            {DURATION_OPTIONS.map(({ value, label }) => (
-                                <button
-                                    key={value}
-                                    type="button"
-                                    onClick={() => handleChange('duration', value)}
-                                    className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all cursor-pointer ${formData.duration === value
-                                            ? 'bg-primary text-white'
-                                            : 'bg-surface-light text-text-muted border border-surface-lighter hover:border-primary/50'
-                                        }`}
-                                >
-                                    {label}
-                                </button>
-                            ))}
+                            {DURATION_OPTIONS.map(({ value, label }) => {
+                                const isMultiDay = formData.start_date && formData.end_date && formData.start_date !== formData.end_date;
+                                const isDisabled = isMultiDay && value === 'half_day';
+
+                                return (
+                                    <button
+                                        key={value}
+                                        type="button"
+                                        disabled={isDisabled}
+                                        onClick={() => handleChange('duration', value)}
+                                        className={`flex-1 py-3 rounded-xl text-sm font-medium transition-all ${isDisabled
+                                                ? 'bg-surface-light text-text-muted/30 cursor-not-allowed border border-surface-lighter/50'
+                                                : formData.duration === value
+                                                    ? 'bg-primary text-white cursor-pointer border border-primary'
+                                                    : 'bg-surface-light text-text-muted border border-surface-lighter hover:border-primary/50 cursor-pointer'
+                                            }`}
+                                    >
+                                        {label}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 

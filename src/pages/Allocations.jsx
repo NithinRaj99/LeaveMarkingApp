@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAllocations } from '../hooks/useAllocations';
 import { useLeaves } from '../hooks/useLeaves';
-import { LEAVE_COLORS } from '../lib/constants';
+import { LEAVE_COLORS, calculateLeaveDays } from '../lib/constants';
 import { Save, Loader2, Settings } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -14,7 +14,7 @@ export default function Allocations() {
     const getTaken = (leaveType) => {
         return leaves
             .filter((l) => l.leave_type === leaveType)
-            .reduce((sum, l) => sum + (l.duration === 'half_day' ? 0.5 : 1), 0);
+            .reduce((sum, l) => sum + calculateLeaveDays(l.start_date, l.end_date, l.duration), 0);
     };
 
     const handleSave = async (alloc) => {
