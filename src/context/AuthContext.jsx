@@ -11,12 +11,28 @@ export function AuthProvider({ children }) {
     const [loading, setLoading] = useState(true);
 
     const fetchProfile = async (userId) => {
-        const { data } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', userId)
-            .single();
-        setProfile(data);
+        console.log(`[fetchProfile] Initiating DB query for user ${userId}...`);
+        try {
+            const promise = supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', userId)
+                .single();
+
+            // Add a parallel timeout explicitly for this fetch
+            const timeoutPromise = new Promise((resolve, reject) => setTimeout(() => reject(new Error('fetchProfile DB timeout!')), 2000));
+
+            const response = await Promise.race([promise, timeoutPromise]);
+
+            console.log(`[fetchProfile] DB query resolved successfully. Status: ${response?.status}`);
+            if (response.error) {
+                console.error(`[fetchProfile] Supabase returned an error:`, response.error);
+            }
+            setProfile(response.data);
+            console.log(`[fetchProfile] Set profile complete.`);
+        } catch (e) {
+            console.error(`[fetchProfile] DB query EXCEPTION or TIMEOUT:`, e);
+        }
     };
 
     useEffect(() => {
