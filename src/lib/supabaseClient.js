@@ -25,9 +25,9 @@ try {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     auth: {
         storage: window.localStorage,
-        autoRefreshToken: true,
+        autoRefreshToken: false, // DISABLED: Known GoTrue library bug deadlocks the PostgREST queue on reload
         persistSession: true,
-        detectSessionInUrl: false, // disabled as a workaround for known hash deadlocks
+        detectSessionInUrl: false,
     },
     global: {
         fetch: async (...args) => {
