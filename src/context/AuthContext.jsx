@@ -33,12 +33,14 @@ export function AuthProvider({ children }) {
 
         const initSession = async () => {
             try {
-                const { data, error } = await supabase.auth.getSession();
+                // Using getUser() instead of getSession() to bypass a known GoTrue 
+                // lock deadlock issue in React Strict Mode that causes getSession to hang.
+                const { data, error } = await supabase.auth.getUser();
                 if (error) {
-                    console.error('getSession error:', error);
+                    console.error('getUser error (expected if logged out):', error);
                 }
 
-                const session = data?.session;
+                const sessionUser = data?.user;
                 if (mounted) {
                     setUser(sessionUser ?? null);
                     if (sessionUser) {
