@@ -24,10 +24,28 @@ export function AuthProvider({ children }) {
 
         const fallbackTimer = setTimeout(() => {
             if (mounted && loading) {
-                console.warn('Auth fallback timer triggered. Removing loading block.');
+                console.warn('Auth fallback timer triggered. Removing loading block and manually reading session.');
+
+                try {
+                    // Attempt to manually recover session from localStorage to prevent logout
+                    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+                    if (supabaseUrl) {
+                        const projectId = new URL(supabaseUrl).hostname.split('.')[0];
+                        const storageKey = `sb-${projectId}-auth-token`;
+                        const sessionData = JSON.parse(localStorage.getItem(storageKey) || 'null');
+
+                        if (sessionData && sessionData.user) {
+                            setUser(sessionData.user);
+                            // Do not await fetchProfile here to avoid hanging; layout handles missing profile
+                        }
+                    }
+                } catch (e) {
+                    console.error('Manual session recovery failed:', e);
+                }
+
                 setLoading(false);
             }
-        }, 3000);
+        }, 1500); // Reduced to 1.5 seconds so the user barely notices the hang
 
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
