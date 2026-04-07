@@ -1,0 +1,14 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  # Tell Netlify that these environment variables are meant to be public 
+  # so it doesn't fail the build when it finds them in the compiled output.
+  SECRETS_SCAN_OMIT_KEYS = "VITE_SUPABASE_URL,VITE_SUPABASE_ANON_KEY"
+
+[[redirects]]
+  # Redirect all traffic to index.html for React Router to handle
+  from = "/*"
+  to = "/index.html"
+  status = 200
