@@ -12,6 +12,19 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
         storage: window.localStorage,
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: true,
+        detectSessionInUrl: false, // disabled as a workaround for known hash deadlocks
     },
+    global: {
+        fetch: async (...args) => {
+            console.log('[Supabase Fetch] initiating request to:', args[0]);
+            try {
+                const response = await fetch(...args);
+                console.log('[Supabase Fetch] completed:', response.status, args[0]);
+                return response;
+            } catch (err) {
+                console.error('[Supabase Fetch] failed:', err);
+                throw err;
+            }
+        }
+    }
 });
