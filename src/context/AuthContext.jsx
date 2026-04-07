@@ -22,59 +22,29 @@ export function AuthProvider({ children }) {
     useEffect(() => {
         let mounted = true;
 
-        // Fallback: If Supabase hangs for any reason (e.g., token refresh deadlock),
-        // we forcefully drop the loading screen after 3 seconds.
         const fallbackTimer = setTimeout(() => {
-            if (mounted) {
-                console.warn('Auth fallback timer triggered! Supabase is hanging.');
+            if (mounted && loading) {
+                console.warn('Auth fallback timer triggered. Removing loading block.');
                 setLoading(false);
             }
         }, 3000);
 
-        const initSession = async () => {
-            try {
-                // Using getUser() instead of getSession() to bypass a known GoTrue 
-                // lock deadlock issue in React Strict Mode that causes getSession to hang.
-                const { data, error } = await supabase.auth.getUser();
-                if (error) {
-                    console.error('getUser error (expected if logged out):', error);
-                }
-
-                const sessionUser = data?.user;
-                if (mounted) {
-                    setUser(sessionUser ?? null);
-                    if (sessionUser) {
-                        try {
-                            await fetchProfile(sessionUser.id);
-                        } catch (profileErr) {
-                            console.error('fetchProfile error in initSession:', profileErr);
-                        }
-                    }
-                }
-            } catch (err) {
-                console.error('Unhandled Session init error:', err);
-            } finally {
-                if (mounted) {
-                    setLoading(false);
-                    clearTimeout(fallbackTimer);
-                }
-            }
-        };
-
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
-                console.log('onAuthStateChange event:', event);
+                if (!mounted) return;
 
                 try {
-                    if (mounted) setUser(session?.user ?? null);
+                    setUser(session?.user ?? null);
 
                     if (session?.user) {
-                        await fetchProfile(session.user.id);
+                        try {
+                            await fetchProfile(session.user.id);
+                        } catch (err) {
+                            console.error('fetchProfile error during auth init:', err);
+                        }
                     } else {
-                        if (mounted) setProfile(null);
+                        setProfile(null);
                     }
-                } catch (err) {
-                    console.error('onAuthStateChange exception:', err);
                 } finally {
                     if (mounted) {
                         setLoading(false);
@@ -83,8 +53,6 @@ export function AuthProvider({ children }) {
                 }
             }
         );
-
-        initSession();
 
         return () => {
             mounted = false;
